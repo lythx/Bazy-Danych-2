@@ -5,4 +5,4 @@ select reservation_id, country, trip_date, trip_name,
        r.person_id, no_tickets, max_no_places
 from reservation r
 join trip t on t.trip_id = r.trip_id
-join person p on p.person_id = r.person_id
+join person p on p.person_id = r.person_id;

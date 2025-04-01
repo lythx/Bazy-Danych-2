@@ -1,6 +1,8 @@
 create or replace view vw_trip
 as
-select trip_id, country, trip_date, trip_name, max_no_places,
-       max_no_places - count(*) as no_available_places
-from vw_reservation
-group by trip_id, country, trip_date, trip_name, max_no_places
+select t.trip_id, t.country, t.trip_date, t.trip_name, t.max_no_places,
+       t.max_no_places - nvl(sum(no_tickets), 0) as no_available_places
+from trip t
+left join vw_reservation vr on vr.trip_id = t.trip_id
+where status != 'C' or vr.trip_id is null
+group by t.trip_id, t.country, t.trip_date, t.trip_name, t.max_no_places;

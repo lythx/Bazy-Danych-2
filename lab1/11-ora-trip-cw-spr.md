@@ -249,12 +249,110 @@ pomocne mogą być materiały dostępne tu:
 https://upel.agh.edu.pl/mod/folder/view.php?id=311899
 w szczególności dokument: `1_ora_modyf.pdf`
 
+# Zadanie 0 - rozwiązanie
 
+## Modyfikacja modelu danych
+
+Dodałem kolumnę no_tickets z checkiem > 0:
 ```sql
+alter table reservation
+add no_tickets int;
 
--- przyklady, kod, zrzuty ekranów, komentarz ...
+alter table reservation
+add constraint reservation_no_tickets_chk check
+(no_tickets > 0);
 
+alter table log
+add no_tickets int;
+
+alter table log
+add constraint log_no_tickets_chk check
+(no_tickets > 0);
 ```
+
+## Modyfikacja danych wejściowych
+
+- pierwsza wycieczka ma dwie rezerwacje i dostepne wolne miejsca, ale jest w przeszłości
+- druga nie ma wolnych miejsc i jest w przyszłości
+- trzecia ma wolne miejsca i jest w przyszłości
+- czwarta jest w przyszłości i nie ma żadnych rezerwacji
+
+Dodawanie no_tickets zrobiłem za pomocą update:
+```sql
+set transaction read write;
+
+update reservation
+set no_tickets = 1
+where reservation_id in (1, 6);
+
+update reservation
+set no_tickets = 2
+where reservation_id in (2, 5, 8);
+
+update reservation
+set no_tickets = 3
+where reservation_id in (4, 9);
+
+update reservation
+set no_tickets = 4
+where reservation_id in (3, 7, 10);
+
+commit;
+```
+
+Screenshoty danych:
+- tabela person ![img_2.png](img_2.png)
+- tabela trip ![img_1.png](img_1.png)
+- tabela reservation ![img_3.png](img_3.png)
+
+## Eksperymenty z danymi i transakcjami
+
+- Rollback transakcji
+```sql
+set transaction read write;
+
+update reservation
+set no_tickets = 14
+where reservation_id = 6;
+
+rollback;
+```
+Tabela nie została zaktualizowana więc rollback działa
+- Błąd podczas transakcji (ujemna wartość no_tickets)
+```sql
+set transaction read write;
+
+update reservation
+set no_tickets = 12
+where reservation_id = 6;
+
+update reservation
+set no_tickets = -1
+where reservation_id = 5;
+
+commit;
+```
+Podczas wykonywania tej transakcji DataGrip pokazuje błąd:
+![img_4.png](img_4.png)
+Po kliknieciu `Stop` następuje rollback transakcji (pierwsza część zapytania nie ma efektu)
+- Wstawianie i usuwanie danych
+```sql
+insert into person (firstname, lastname)
+values ('Janusz', 'Balicki');
+
+delete from person
+where firstname = 'Janusz' and lastname = 'Balicki';
+```
+Oba zapytania działają
+
+## Jak działa commit i rollback?
+
+Commit zatwierdza transakcję, modyfikacje zostają zapisane w bazie danych.
+Rollback anuluje transakcję i sprawia, że żadne zmiany w transakcji nie zostają zapisane. W przypadku błędu podczas transakcji, można kliknąć `Stop` w DataGripie i wykonany zostanie rollback.
+
+## Transakcje w PL/SQL vs T-SQL
+
+Transakcje wydają się bardzo podobne w obu językach, różnica jaką zauważyłem to możliwość zignorowania błędu w transakcji za pomocą DataGripa w PL/SQL, a z tego co pamiętam w T-SQL nie wyświetlała się taka możliwość.
 
 ---
 # Zadanie 1 - widoki
@@ -279,15 +377,46 @@ Proponowany zestaw widoków można rozbudować wedle uznania/potrzeb
 
 # Zadanie 1  - rozwiązanie
 
+## vw_reservation
 ```sql
-
--- wyniki, kod, zrzuty ekranów, komentarz ...
-
-
-
+create or replace view vw_reservation
+as
+select reservation_id, country, trip_date, trip_name,
+       firstname, lastname, status, r.trip_id,
+       r.person_id, no_tickets, max_no_places
+from reservation r
+join trip t on t.trip_id = r.trip_id
+join person p on p.person_id = r.person_id;
 ```
+Wynik:
+![img_5.png](img_5.png)
+![img_6.png](img_6.png)
 
+## vw_trip
+Wykorzystałem tu widok `vw_reservation`. Ze względu na to, że mogą być wycieczki bez rezerwacji używam `left join` i `nvl(sum(no_tickets), 0)`, które zmienia `null` na zero. Ignoruję rezerwacje ze statusem `C` - Cancelled. Dodałem kolumnę `no_available_places` na potrzeby kolejnych zadań.
+```sql
+create or replace view vw_trip
+as
+select t.trip_id, t.country, t.trip_date, t.trip_name, t.max_no_places,
+       t.max_no_places - nvl(sum(no_tickets), 0) as no_available_places
+from trip t
+left join vw_reservation vr on vr.trip_id = t.trip_id
+where status != 'C' or vr.trip_id is null
+group by t.trip_id, t.country, t.trip_date, t.trip_name, t.max_no_places;
+```
+Wynik:
+![img_7.png](img_7.png)
 
+## vw_available_trip
+Wykorzystałem tu widok ```vw_trip```. Ignoruję rekordy w których `no_available_places = 0` oraz wycieczki, które już się odbyły za pomocą porównania daty z `sysdate`
+```sql
+create or replace view vw_available_trip
+as
+select * from vw_trip
+where no_available_places > 0 and trip_date > sysdate;
+```
+Wynik:
+![img_8.png](img_8.png)
 
 ---
 # Zadanie 2  - funkcje
@@ -319,12 +448,152 @@ Proponowany zestaw funkcji można rozbudować wedle uznania/potrzeb
 
 # Zadanie 2  - rozwiązanie
 
+W funkcjach dodaję `_` na koniec nazw niektórych argumentów ze względu na konflikty nazw. Wiem, że można też pisać nazwę funkcji, ale uznałem, że dodanie `_` jest wygodniejsze i czytelne. 
+
+Na potrzeby tego zadania zdefiniowałem typy pomocnicze:
+- t_trip i t_trip_table
 ```sql
+create or replace type t_trip as object
+(
+    trip_id int,
+    trip_name varchar(100),
+    country varchar(50),
+    trip_date date,
+    max_no_places int,
+    no_available_places int
+);
 
--- wyniki, kod, zrzuty ekranów, komentarz ...
+create or replace type t_trip_table as table of t_trip;
+```
+- t_trip_participant oraz t_trip_participant_table
+```sql
+create or replace type t_trip_participant as object
+(
+    reservation_id int,
+    country varchar(50),
+    trip_date date,
+    trip_name varchar(100),
+    firstname varchar(50),
+    lastname varchar(50),
+    status char(1),
+    trip_id int,
+    person_id int,
+    no_tickets int,
+    max_no_places int
+);
 
+create or replace type t_trip_participant_table is table of t_trip_participant;
+```
+oraz funkcje pomocnicze:
+- `f_person_exists` - zwraca true jeśli dana osoba istnieje
+```sql
+create or replace function f_person_exists(person_id_ int)
+    return boolean
+as
+    person_exists int;
+begin
+    select count(*) into person_exists
+    from person
+    where person_id = person_id_;
+
+    return person_exists = 1;
+end;
+```
+- `f_trip_exists` - zwraca true jeśli dana wycieczka istnieje
+```sql
+create or replace function f_trip_exists(trip_id_ int)
+    return boolean
+as
+    trip_exists int;
+begin
+    select count(*) into trip_exists
+    from trip
+    where trip_id = trip_id_;
+
+    return trip_exists = 1;
+end;
 ```
 
+## f_trip_participants 
+W tej funkcji sprawdzam parametr `trip_id` - ma to sens ponieważ podanie złego id wskazuje na błąd w kodzie. Dzięki temu zwrócenie pustej tabeli jednoznacznie oznacza, że wycieczka nie ma rezerwacji ale istnieje w bazie danych.
+```sql
+create or replace function f_trip_participants(trip_id_ int)
+    return t_trip_participant_table
+as
+    result t_trip_participant_table;
+begin
+    if not f_trip_exists(trip_id_) then
+        raise_application_error(-20001, 'trip not found');
+    end if;
+
+    select t_trip_participant(reservation_id, country, trip_date, trip_name,
+       firstname, lastname, status, trip_id,
+       person_id, no_tickets, max_no_places)
+    bulk collect
+    into result
+    from vw_reservation
+    where trip_id = trip_id_ and
+          status != 'C';
+    return result;
+end;
+```
+Przykładowy wynik (dla `select * from f_trip_participants(2);`):
+![img_10.png](img_10.png)
+![img_11.png](img_11.png)
+
+## f_person_reservations
+W tej funkcji sprawdzam parametr `person_id` - ma to sens ponieważ podanie złego id znów wskazuje na błąd w kodzie. Dzięki temu zwrócenie pustej tabeli jednoznacznie oznacza, że osoba nie ma rezerwacji, ale istnieje w bazie danych.
+```sql
+create or replace function f_person_reservations(person_id_ int)
+    return t_trip_participant_table
+as
+    result t_trip_participant_table;
+begin
+    if not f_person_exists(person_id_) then
+        raise_application_error(-20002, 'person not found');
+    end if;
+
+    select t_trip_participant(reservation_id, country, trip_date, trip_name,
+       firstname, lastname, status, trip_id,
+       person_id, no_tickets, max_no_places)
+    bulk collect
+    into result
+    from vw_reservation
+    where person_id = person_id_ and
+          status != 'C';
+    return result;
+end;
+```
+Przykładowy wynik (dla `select * from f_person_reservations(1);`):
+![img_12.png](img_12.png)
+![img_13.png](img_13.png)
+
+## f_available_trips_to
+W tej funkcji sprawdzam czy `data_from < date_to`, ponieważ niespełnienie tego wskazuje na oczywisty błąd. Nie sprawdzam czy istnieją rekordy z danym krajem, bo nie ma tabeli krajów więc uznałem, że nie jest to użyteczne i niekoniecznie oznacza błąd.
+
+```sql
+create or replace function f_available_trips_to(country_ varchar2, date_from date, date_to date)
+    return t_trip_table
+as
+    result t_trip_table;
+begin
+    if date_from >= date_to then
+        raise_application_error(-20003, 'date_from must be lesser than date_to');
+    end if;
+
+    select t_trip(trip_id, trip_name, country,
+                  trip_date, max_no_places, no_available_places)
+    bulk collect
+    into result
+    from vw_available_trip vat
+    where country = country_ and
+          trip_date >= date_from and
+          trip_date <= date_to;
+    return result;
+end;
+```
+Przykładowy wynik (dla `select * from f_available_trips_to('Francja', to_date('2024-10-10', 'YYYY-MM-DD'), to_date('2026-10-10', 'YYYY-MM-DD'));`):
+![img_14.png](img_14.png)
 
 ---
 # Zadanie 3  - procedury
@@ -363,13 +632,230 @@ Proponowany zestaw procedur można rozbudować wedle uznania/potrzeb
 
 # Zadanie 3  - rozwiązanie
 
+Na potrzeby tego zadania dodałem funkcje pomocnicze:
+- `f_trip_free_places` - zwraca ilość wolnych miejsc dla danej wycieczki
 ```sql
+create or replace function f_trip_free_places(trip_id_ int)
+    return int
+as
+    free_places int;
+begin
+    if not f_trip_exists(trip_id_) then
+        raise_application_error(-20001, 'trip not found');
+    end if;
+```
+- `f_trip_is_future` - zwraca `true` jeśli wycieczka jeszcze się nie odbyła
+```sql
+create or replace function f_trip_is_future(trip_id_ int)
+    return boolean
+as
+    is_future int;
+begin
+    if not f_trip_exists(trip_id_) then
+        raise_application_error(-20001, 'trip not found');
+    end if;
 
--- wyniki, kod, zrzuty ekranów, komentarz ...
+    select count(*) into is_future
+    from vw_trip
+    where trip_id = trip_id_ and
+          trip_date > sysdate;
 
+    return is_future = 1;
+end;
+```
+- `f_reservation_exists` - zwraca `true` jeśli dana rezerwacja istnieje
+```sql
+create or replace function f_reservation_exists(reservation_id_ int)
+    return boolean
+as
+    reservation_exists int;
+begin
+    select count(*) into reservation_exists
+    from reservation
+    where reservation_id = reservation_id_;
+
+    return reservation_exists = 1;
+end;
 ```
 
+- `f_is_valid_status` - zwraca true jeśli status jest równy 'N', 'P' lub 'C'
+```sql
+create or replace function f_is_valid_status(status_ char)
+    return boolean
+as begin
+    return status_ in ('N', 'P', 'C');
+end;
+```
+- `f_trip_taken_places` - zwraca ilość zajętych miejsc na podanej wycieczce
+```sql
+create or replace function f_trip_taken_places(trip_id_ int)
+    return int
+as
+    taken_places int;
+begin
+    if not f_trip_exists(trip_id_) then
+        raise_application_error(-20001, 'trip not found');
+    end if;
 
+    select max_no_places - no_available_places into taken_places
+    from vw_trip
+    where trip_id = trip_id_;
+
+    return taken_places;
+end;
+```
+
+## p_add_reservation
+Sprawdzam czy wycieczka i osoba istnieją (błędy w funkcjach pomocniczych) oraz czy są wolne miejsca i czy wycieczka jest w przyszłości. Użyłem transakcji, aby zachować spójność tabel reservation i log
+```sql
+create or replace procedure p_add_reservation
+    (trip_id_ int, person_id_ int, no_tickets_ int)
+as
+    reservation_id_ int;
+begin
+    if f_trip_free_places(trip_id_) < no_tickets_ then
+        raise_application_error(-20004, 'trip does not have enough free places');
+    end if;
+
+    if not f_trip_is_future(trip_id_) then
+        raise_application_error(-20005, 'trip already started/ended');
+    end if;
+
+    set transaction read write;
+    insert into reservation(trip_id, person_id, status, no_tickets)
+    values(trip_id_, person_id_, 'N', no_tickets_)
+    return reservation_id into reservation_id_;
+
+    insert into log(reservation_id, log_date, status, no_tickets)
+    values (reservation_id_, sysdate, 'N', no_tickets_);
+
+    commit;
+end;
+```
+Po wykonaniu `p_add_reservation(3, 3, 2)` rekord został dodany:
+![img_15.png](img_15.png)
+Zostało 0 miejsc w wycieczce 3 zatem wykonaniu `p_add_reservation(3, 4, 1)` otrzymujemy błąd:
+![img_16.png](img_16.png)
+Po wykonaniu dla wycieczki 1, która już się zakończyła otrzymujemy błąd:
+![img_17.png](img_17.png)
+
+## p_modify_reservation_status
+Sprawdzam istnienie rezerwacji, czy status jest właściwy oraz czy wycieczka ma wystarczająco dużo wolnych miejsc w przypadku zmiany statusu z 'C'. Znów używam transakcji.
+```sql
+create or replace procedure p_modify_reservation_status
+    (reservation_id_ int, status_ char)
+as
+    cur_status char;
+    trip_id_ int;
+    no_tickets_ int;
+begin
+    if not f_reservation_exists(reservation_id_) then
+        raise_application_error(-20006, 'reservation not found');
+    end if;
+
+    if not f_is_valid_status(status_) then
+        raise_application_error(-20007, 'invalid reservation status');
+    end if;
+
+    set transaction read write;
+
+    select trip_id, status, no_tickets into trip_id_, cur_status, no_tickets_
+    from reservation
+    where reservation_id = reservation_id_;
+
+    if cur_status = status_ then
+        return;
+    end if;
+
+    if cur_status = 'C' and f_trip_free_places(trip_id_) = 0 then
+        raise_application_error(-20004, 'trip does not have enough free places');
+    end if;
+
+    update reservation
+    set status = status_
+    where reservation_id = reservation_id_;
+
+    insert into log(reservation_id, log_date, status, no_tickets)
+    values (reservation_id_, sysdate, status_, no_tickets_);
+
+    commit;
+end;
+```
+Po wykonaniu `p_modify_reservation_status(5, 'P')` dane zaktualizowane (rezerwacja 5 miała status 'N'):
+![img_18.png](img_18.png)
+Po wykonaniu `p_modify_reservation_status(8, 'N')` błąd bo nie ma miejsc, a rezerwacja miała status 'C':
+![img_19.png](img_19.png)
+
+## p_modify_reservation
+Sprawdzam istnienie rezerwacji, status i czy wycieczka ma wystarczająco dużo biletów. Znów użyłem transakcji.
+```sql
+create or replace procedure p_modify_reservation
+    (reservation_id_ int, no_tickets_ int)
+as
+    trip_id_ int;
+    status_ char;
+    cur_no_tickets int;
+begin
+    if not f_reservation_exists(reservation_id_) then
+        raise_application_error(-20006, 'reservation not found');
+    end if;
+
+    set transaction read write;
+
+    select trip_id, status, no_tickets into trip_id_, status_, cur_no_tickets
+    from reservation
+    where reservation_id = reservation_id_;
+
+    if no_tickets_ = cur_no_tickets then
+        return;
+    end if;
+
+    if status_ = 'C' then
+        raise_application_error(-20008, 'can not modify no_tickets for cancelled reservation');
+    end if;
+
+    if f_trip_free_places(trip_id_) < no_tickets_ - cur_no_tickets then
+         raise_application_error(-20004, 'trip does not have enough free places');
+    end if;
+
+    update reservation
+    set no_tickets = no_tickets_
+    where reservation_id = reservation_id_;
+
+    insert into log(reservation_id, log_date, status, no_tickets)
+    values (reservation_id_, sysdate, status_, no_tickets_);
+
+    commit;
+end;
+```
+Po wywołaniu `p_modify_reservation(9, 1)` (ma status 'P' i 3 bilety) dane zostają zmodyfikowane:
+![img_20.png](img_20.png)
+Po wywołaniu `p_modify_reservation(9, 100)` jest błąd:
+![img_21.png](img_21.png)
+
+
+## p_modify_max_no_places
+Sprawdzam czy ilość zajętych miejsc jest mniejsza niż nowy limit
+```sql
+create or replace procedure p_modify_max_no_places
+    (trip_id_ int, max_no_places_ int)
+as begin
+    if f_trip_taken_places(trip_id_) < max_no_places_ then
+        raise_application_error(-20009, 'trip has too many taken places');
+    end if;
+
+    update trip
+    set max_no_places = max_no_places_
+    where trip_id = trip_id_;
+end;
+```
+Po wywołaniu `p_modify_max_no_places(4, 20)` dane zostają zmodyfikowane:
+![img_22.png](img_22.png)
+Po wywołaniu `p_modify_max_no_places(3, 1)` jest błąd:
+![img_23.png](img_23.png)
+
+Wszystkie udane transakcje zostały zapisane do tabeli `log`:
+![img_24.png](img_24.png)
 
 ---
 # Zadanie 4  - triggery
@@ -396,13 +882,139 @@ Należy przygotować procedury: `p_add_reservation_4`, `p_modify_reservation_sta
 
 # Zadanie 4  - rozwiązanie
 
+## Trigger obługujący dodanie/modyfikację rezerwacji
 ```sql
-
--- wyniki, kod, zrzuty ekranów, komentarz ...
-
+create or replace trigger tr_log_reservation
+    after insert or update
+    on reservation
+    for each row
+begin
+    insert into log(reservation_id, log_date, status, no_tickets)
+    values (:NEW.reservation_id, sysdate, :NEW.status, :NEW.no_tickets);
+end;
 ```
 
+## Trigger zabraniający usunięcia rezerwacji
+```sql
+create or replace trigger tr_prevent_delete_reservation
+    before delete
+    on reservation
+    for each row
+begin
+    raise_application_error(-20010, 'deleting reservations is forbidden');
+end;
+```
+Wynik:
+![img_27.png](img_27.png)
 
+
+## Zmodyfikowane procedury
+W procedurach usunąłem inserta do tabeli log
+## p_add_reservation_4
+Po usunięciu inserta do tabeli log transakcja nie jest potrzebna
+```sql
+create or replace procedure p_add_reservation_4
+    (trip_id_ int, person_id_ int, no_tickets_ int)
+as
+    reservation_id_ int;
+begin
+    if f_trip_free_places(trip_id_) < no_tickets_ then
+        raise_application_error(-20004, 'trip does not have enough free places');
+    end if;
+
+    if not f_trip_is_future(trip_id_) then
+        raise_application_error(-20005, 'trip already started/ended');
+    end if;
+
+    insert into reservation(trip_id, person_id, status, no_tickets)
+    values(trip_id_, person_id_, 'N', no_tickets_)
+    return reservation_id into reservation_id_;
+end;
+```
+Po wykonaniu `p_add_reservation(4, 1, 3)` mamy wpis w logu stworzony przez trigger:
+![img_25.png](img_25.png)
+
+## p_modify_reservation_status_4
+```sql
+create or replace procedure p_modify_reservation_status_4
+    (reservation_id_ int, status_ char)
+as
+    cur_status char;
+    trip_id_ int;
+    no_tickets_ int;
+begin
+    if not f_reservation_exists(reservation_id_) then
+        raise_application_error(-20006, 'reservation not found');
+    end if;
+
+    if not f_is_valid_status(status_) then
+        raise_application_error(-20007, 'invalid reservation status');
+    end if;
+
+    set transaction read write;
+
+    select trip_id, status, no_tickets into trip_id_, cur_status, no_tickets_
+    from reservation
+    where reservation_id = reservation_id_;
+
+    if cur_status = status_ then
+        return;
+    end if;
+
+    if cur_status = 'C' and f_trip_free_places(trip_id_) = 0 then
+        raise_application_error(-20004, 'trip does not have enough free places');
+    end if;
+
+    update reservation
+    set status = status_
+    where reservation_id = reservation_id_;
+
+    commit;
+end;
+```
+Po wykonaniu `p_modify_reservation_status_4(23, 'C')` mamy wpis w logu:
+![img_26.png](img_26.png)
+
+## p_modify_reservation_4
+```sql
+create or replace procedure p_modify_reservation_4
+    (reservation_id_ int, no_tickets_ int)
+as
+    trip_id_ int;
+    status_ char;
+    cur_no_tickets int;
+begin
+    if not f_reservation_exists(reservation_id_) then
+        raise_application_error(-20006, 'reservation not found');
+    end if;
+
+    set transaction read write;
+
+    select trip_id, status, no_tickets into trip_id_, status_, cur_no_tickets
+    from reservation
+    where reservation_id = reservation_id_;
+
+    if no_tickets_ = cur_no_tickets then
+        return;
+    end if;
+
+    if status_ = 'C' then
+        raise_application_error(-20008, 'can not modify no_tickets for cancelled reservation');
+    end if;
+
+    if f_trip_free_places(trip_id_) < no_tickets_ - cur_no_tickets then
+         raise_application_error(-20004, 'trip does not have enough free places');
+    end if;
+
+    update reservation
+    set no_tickets = no_tickets_
+    where reservation_id = reservation_id_;
+
+    commit;
+end;
+```
+Po wywołaniu `p_modify_reservation_4(4, 1)` mamy wpis w logu:
+![img_28.png](img_28.png)
 
 ---
 # Zadanie 5  - triggery
@@ -428,11 +1040,130 @@ Należy przygotować procedury: `p_add_reservation_5`, `p_modify_reservation_sta
 
 # Zadanie 5  - rozwiązanie
 
+Obliczam zmianę w ilości miejsc używając zmiennej taken_places_change i potem sprawdzam czy jest wystarczająco dużo miejsc
+
 ```sql
+create or replace trigger tr_check_places_availability
+    before insert or update
+    on reservation
+    for each row
+declare
+    taken_places_change int := 0;
+    max_no_places_ int;
+begin
+    select max_no_places into max_no_places_
+    from trip t
+    where t.trip_id = :NEW.trip_id;
 
--- wyniki, kod, zrzuty ekranów, komentarz ...
+    if :NEW.status != 'C' then
+        taken_places_change := taken_places_change + :NEW.no_tickets;
+    end if;
 
+    if updating and :OLD.status != 'C' then
+        taken_places_change := taken_places_change - :OLD.no_tickets;
+    end if;
+
+    if taken_places_change + f_trip_taken_places(:NEW.trip_id) > max_no_places_ then
+        raise_application_error(-20004, 'trip does not have enough free places');
+    end if;
+end;
 ```
+
+## Zmodyfikowane procedury
+W procedurach usunąłem wywołanie funkcji sprawdzającej ilość miejsc 
+
+## p_add_reservation_5
+```sql
+create or replace procedure p_add_reservation_5
+    (trip_id_ int, person_id_ int, no_tickets_ int)
+as
+    reservation_id_ int;
+begin
+    if not f_trip_is_future(person_id_) then
+        raise_application_error(-20005, 'trip already started/ended');
+    end if;
+
+    insert into reservation(trip_id, person_id, status, no_tickets)
+    values(trip_id_, person_id_, 'N', no_tickets_)
+    return reservation_id into reservation_id_;
+end;
+```
+Po wywołaniu `p_add_reservation(3, 1, 100)` dostajemy błąd:
+![img_29.png](img_29.png)
+
+## p_modify_reservation_status_5
+```sql
+create or replace procedure p_modify_reservation_status_5
+    (reservation_id_ int, status_ char(1))
+as
+    cur_status char(1);
+    trip_id_ int;
+    no_tickets_ int;
+begin
+    if not f_reservation_exists(reservation_id_) then
+        raise_application_error(-20006, 'reservation not found');
+    end if;
+
+    if not f_is_valid_status(status_) then
+        raise_application_error(-20007, 'invalid reservation status');
+    end if;
+
+    set transaction read write;
+
+    select trip_id, status, no_tickets into trip_id_, cur_status, no_tickets_
+    from reservation
+    where reservation_id = reservation_id_;
+
+    if cur_status = status_ then
+        return;
+    end if;
+
+    update reservation
+    set status = status_
+    where reservation_id = reservation_id_;
+
+    commit;
+end;
+```
+Po wykonaniu `p_modify_reservation_status_5(8, 'P')` dostajemy błąd z triggera:
+![img_31.png](img_31.png)
+
+## p_modify_reservation_5
+```sql
+create or replace procedure p_modify_reservation_5
+    (reservation_id_ int, no_tickets_ int)
+as
+    trip_id_ int;
+    status_ char(1);
+    cur_no_tickets int;
+begin
+    if not f_reservation_exists(reservation_id_) then
+        raise_application_error(-20006, 'reservation not found');
+    end if;
+
+    set transaction read write;
+
+    select trip_id, status, no_tickets into trip_id_, status_, cur_no_tickets
+    from reservation
+    where reservation_id = reservation_id_;
+
+    if no_tickets_ = cur_no_tickets then
+        return;
+    end if;
+
+    if status_ = 'C' then
+        raise_application_error(-20008, 'can not modify no_tickets for cancelled reservation');
+    end if;
+
+    update reservation
+    set no_tickets = no_tickets_
+    where reservation_id = reservation_id_;
+
+    commit;
+end;
+```
+Po wywołaniu `p_modify_reservation(1, 100)` dostajemy błąd:
+![img_30.png](img_30.png)
 
 ---
 # Zadanie 6
@@ -462,13 +1193,12 @@ alter table trip add
 
 # Zadanie 6  - rozwiązanie
 
+Do wypełnienia nowej kolumny użyłem widoku `vw_trip`:
 ```sql
-
--- wyniki, kod, zrzuty ekranów, komentarz ...
-
+update trip t
+set no_available_places = (select v.no_available_places from vw_trip v where v.trip_id = t.trip_id)
+where 1 = 1;
 ```
-
-
 
 ---
 # Zadanie 6a  - procedury
@@ -489,12 +1219,138 @@ Należy stworzyć nowe wersje tych widoków/procedur/triggerów (np. dodając do
 
 # Zadanie 6a  - rozwiązanie
 
+## p_add_reservation_6
+Dodałem update do tabeli trip
 ```sql
+create or replace procedure p_add_reservation_6
+    (trip_id_ int, person_id_ int, no_tickets_ int)
+as
+    reservation_id_ int;
+begin
+    if f_trip_free_places(trip_id_) < no_tickets_ then
+        raise_application_error(-20004, 'trip does not have enough free places');
+    end if;
 
--- wyniki, kod, zrzuty ekranów, komentarz ...
+    if not f_trip_is_future(trip_id_) then
+        raise_application_error(-20005, 'trip already started/ended');
+    end if;
 
+    set transaction read write;
+    insert into reservation(trip_id, person_id, status, no_tickets)
+    values(trip_id_, person_id_, 'N', no_tickets_)
+    return reservation_id into reservation_id_;
+
+    update trip
+    set no_available_places = no_available_places - no_tickets_
+    where trip_id = trip_id_;
+
+    insert into log(reservation_id, log_date, status, no_tickets)
+    values (reservation_id_, sysdate, 'N', no_tickets_);
+
+    commit;
+end;
 ```
 
+## p_modify_reservation_status_6
+Dodawanie lub odejmowanie w trip zależne od statusu
+```sql
+create or replace procedure p_modify_reservation_status_6
+    (reservation_id_ int, status_ char)
+as
+    cur_status char;
+    trip_id_ int;
+    no_tickets_ int;
+begin
+    if not f_reservation_exists(reservation_id_) then
+        raise_application_error(-20006, 'reservation not found');
+    end if;
+
+    if not f_is_valid_status(status_) then
+        raise_application_error(-20007, 'invalid reservation status');
+    end if;
+
+    set transaction read write;
+
+    select trip_id, status, no_tickets into trip_id_, cur_status, no_tickets_
+    from reservation
+    where reservation_id = reservation_id_;
+
+    if cur_status = status_ then
+        return;
+    end if;
+
+    if cur_status = 'C' and f_trip_free_places(trip_id_) = 0 then
+        raise_application_error(-20004, 'trip does not have enough free places');
+    end if;
+
+    if cur_status = 'C' then
+        update trip
+        set no_available_places = no_available_places + no_tickets_
+        where trip_id = trip_id_;
+    elsif status_ = 'C' then
+        update trip
+        set no_available_places = no_available_places - no_tickets_
+        where trip_id = trip_id_;
+    end if;
+
+
+    update reservation
+    set status = status_
+    where reservation_id = reservation_id_;
+
+    insert into log(reservation_id, log_date, status, no_tickets)
+    values (reservation_id_, sysdate, status_, no_tickets_);
+
+    commit;
+end;
+```
+
+## p_modify_reservation_6
+Update z różnicą biletów
+```sql
+create or replace procedure p_modify_reservation_6
+    (reservation_id_ int, no_tickets_ int)
+as
+    trip_id_ int;
+    status_ char;
+    cur_no_tickets int;
+begin
+    if not f_reservation_exists(reservation_id_) then
+        raise_application_error(-20006, 'reservation not found');
+    end if;
+
+    set transaction read write;
+
+    select trip_id, status, no_tickets into trip_id_, status_, cur_no_tickets
+    from reservation
+    where reservation_id = reservation_id_;
+
+    if no_tickets_ = cur_no_tickets then
+        return;
+    end if;
+
+    if status_ = 'C' then
+        raise_application_error(-20008, 'can not modify no_tickets for cancelled reservation');
+    end if;
+
+    if f_trip_free_places(trip_id_) < no_tickets_ - cur_no_tickets then
+         raise_application_error(-20004, 'trip does not have enough free places');
+    end if;
+
+    update trip
+    set no_available_places = no_available_places - no_tickets_ + cur_no_tickets
+    where trip_id = trip_id_;
+
+    update reservation
+    set no_tickets = no_tickets_
+    where reservation_id = reservation_id_;
+
+    insert into log(reservation_id, log_date, status, no_tickets)
+    values (reservation_id_, sysdate, status_, no_tickets_);
+
+    commit;
+end;
+```
 
 
 ---
@@ -514,12 +1370,30 @@ Należy stworzyć nowe wersje tych widoków/procedur/triggerów (np. dodając do
 
 
 # Zadanie 6b  - rozwiązanie
-
-
+Trigger ustala zmianę w ilości rezerwacji za pomocą zmiennej taken_places_change po czym wykonuje update
 ```sql
+create or replace trigger tr_update_no_available_places
+    before insert or update
+    on reservation
+    for each row
+declare
+    taken_places_change int;
+begin
+    taken_places_change := 0;
 
--- wyniki, kod, zrzuty ekranów, komentarz ...
+    if :NEW.status != 'C' then
+        taken_places_change := taken_places_change + :NEW.no_tickets;
+    end if;
 
+    if updating and :OLD.status != 'C' then
+        taken_places_change := taken_places_change - :OLD.no_tickets;
+    end if;
+
+    update trip
+    set no_available_places = no_available_places - taken_places_change
+    where trip_id = trip_id_;
+
+end;
 ```
 
 
@@ -527,8 +1401,5 @@ Należy stworzyć nowe wersje tych widoków/procedur/triggerów (np. dodając do
 
 Porównaj sposób programowania w systemie Oracle PL/SQL ze znanym ci systemem/językiem MS Sqlserver T-SQL
 
-```sql
-
--- komentarz ...
-
-```
+## Porównanie
+Jęzki są bardzo podobne, znajomość T-SQLa bardzo dobrze przekłada się na PL/SQL, jest trochę różnic w nazewnictwie i składni, ale ogólna idea i sposoby rozwiązywania problemów są takie same.

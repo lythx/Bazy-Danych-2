@@ -5,13 +5,13 @@ insert into trip(trip_name, country, trip_date, max_no_places)
 values ('Wycieczka do Paryza', 'Francja', to_date('2023-09-12', 'YYYY-MM-DD'), 7);
 
 insert into trip(trip_name, country, trip_date,  max_no_places)
-values ('Piekny Krakow', 'Polska', to_date('2025-05-03','YYYY-MM-DD'), 3);
+values ('Piekny Krakow', 'Polska', to_date('2025-05-03','YYYY-MM-DD'), 6);
 
 insert into trip(trip_name, country, trip_date,  max_no_places)
-values ('Znow do Francji', 'Francja', to_date('2025-05-01','YYYY-MM-DD'), 5);
+values ('Znow do Francji', 'Francja', to_date('2025-05-01','YYYY-MM-DD'), 10);
 
 insert into trip(trip_name, country, trip_date,  max_no_places)
-values ('Hel', 'Polska', to_date('2025-05-01','YYYY-MM-DD'),  4);
+values ('Hel', 'Polska', to_date('2025-05-01','YYYY-MM-DD'),  5);
 
 -- person
 insert into person(firstname, lastname)
@@ -50,16 +50,7 @@ insert into reservation(trip_id, person_id, status)
 values (1, 1, 'P');
 
 insert into reservation(trip_id, person_id, status)
-values (1, 2, 'N');
-
-insert into reservation(trip_id, person_id, status)
-values (1, 6, 'C');
-
-insert into reservation(trip_id, person_id, status)
-values (1, 8, 'P');
-
-insert into reservation(trip_id, person_id, status)
-values (1, 4, 'P');
+values (1, 2, 'P');
 
 -- trip 2
 insert into reservation(trip_id, person_id, status)
@@ -69,13 +60,22 @@ insert into reservation(trip_id, person_id, status)
 values (2, 4, 'C');
 
 insert into reservation(trip_id, person_id, status)
-values (2, 9, 'P');
+values (2, 9, 'N');
 
 -- trip 3
 insert into reservation(trip_id, person_id, status)
-values (2, 4, 'P');
+values (3, 4, 'N');
 
 insert into reservation(trip_id, person_id, status)
 values (3, 4, 'P');
 
-commit
+insert into reservation(trip_id, person_id, status)
+values (3, 6, 'C');
+
+insert into reservation(trip_id, person_id, status)
+values (3, 8, 'P');
+
+insert into reservation(trip_id, person_id, status)
+values (3, 4, 'C');
+
+commit;
