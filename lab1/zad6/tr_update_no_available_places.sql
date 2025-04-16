@@ -1,4 +1,4 @@
-create or replace trigger tr_update_no_available_places
+create or replace trigger tr_update_no_available_places_6b
     before insert or update
     on reservation
     for each row
@@ -17,6 +17,6 @@ begin
 
     update trip
     set no_available_places = no_available_places - taken_places_change
-    where trip_id = trip_id_;
+    where trip_id = :NEW.trip_id;
 
 end;

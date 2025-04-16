@@ -8,24 +8,27 @@ widoki, funkcje, procedury, triggery
 ---
 
 
-Imiona i nazwiska autorów :
+Imiona i nazwiska autorów: Szymon Żuk
 
 ---
 <style>
   {
-    font-size: 16pt;
+    font-size: 12pt;
   }
 </style> 
 
 <style scoped>
  li, p {
-    font-size: 14pt;
+    font-size: 10pt;
   }
 </style> 
 
 <style scoped>
  pre {
-    font-size: 10pt;
+    font-size: 6pt;
+  }
+  img {
+    width: 60%
   }
 </style> 
 
@@ -301,9 +304,18 @@ commit;
 ```
 
 Screenshoty danych:
-- tabela person ![img_2.png](img_2.png)
-- tabela trip ![img_1.png](img_1.png)
-- tabela reservation ![img_3.png](img_3.png)
+
+- tabela person
+
+ ![img_2.png](img_2.png)
+
+- tabela trip 
+
+![img_1.png](img_1.png)
+
+- tabela reservation
+
+ ![img_3.png](img_3.png)
 
 ## Eksperymenty z danymi i transakcjami
 
@@ -333,7 +345,9 @@ where reservation_id = 5;
 commit;
 ```
 Podczas wykonywania tej transakcji DataGrip pokazuje błąd:
+
 ![img_4.png](img_4.png)
+
 Po kliknieciu `Stop` następuje rollback transakcji (pierwsza część zapytania nie ma efektu)
 - Wstawianie i usuwanie danych
 ```sql
@@ -347,12 +361,11 @@ Oba zapytania działają
 
 ## Jak działa commit i rollback?
 
-Commit zatwierdza transakcję, modyfikacje zostają zapisane w bazie danych.
-Rollback anuluje transakcję i sprawia, że żadne zmiany w transakcji nie zostają zapisane. W przypadku błędu podczas transakcji, można kliknąć `Stop` w DataGripie i wykonany zostanie rollback.
+Commit zatwierdza transakcję, modyfikacje zostają zapisane w bazie danych. Rollback anuluje transakcję i sprawia, że żadne zmiany w transakcji nie zostają zapisane. W przypadku błędu podczas transakcji, można kliknąć `Stop` w DataGripie i wykonany zostanie rollback.
 
 ## Transakcje w PL/SQL vs T-SQL
 
-Transakcje wydają się bardzo podobne w obu językach, różnica jaką zauważyłem to możliwość zignorowania błędu w transakcji za pomocą DataGripa w PL/SQL, a z tego co pamiętam w T-SQL nie wyświetlała się taka możliwość.
+Idea transakcji jest podobna, ale w PL/SQL nie można zagnieżdżać transakcji, a w T-SQL można. W PL/SQL ustawia się READ WRITE/READ ONLY, a w T-SQL nie.
 
 ---
 # Zadanie 1 - widoki
@@ -389,6 +402,7 @@ join trip t on t.trip_id = r.trip_id
 join person p on p.person_id = r.person_id;
 ```
 Wynik:
+
 ![img_5.png](img_5.png)
 ![img_6.png](img_6.png)
 
@@ -405,6 +419,7 @@ where status != 'C' or vr.trip_id is null
 group by t.trip_id, t.country, t.trip_date, t.trip_name, t.max_no_places;
 ```
 Wynik:
+
 ![img_7.png](img_7.png)
 
 ## vw_available_trip
@@ -416,7 +431,8 @@ select * from vw_trip
 where no_available_places > 0 and trip_date > sysdate;
 ```
 Wynik:
-![img_8.png](img_8.png)
+
+_8.png](img_8.png)
 
 ---
 # Zadanie 2  - funkcje
@@ -538,6 +554,7 @@ begin
 end;
 ```
 Przykładowy wynik (dla `select * from f_trip_participants(2);`):
+
 ![img_10.png](img_10.png)
 ![img_11.png](img_11.png)
 
@@ -565,6 +582,7 @@ begin
 end;
 ```
 Przykładowy wynik (dla `select * from f_person_reservations(1);`):
+
 ![img_12.png](img_12.png)
 ![img_13.png](img_13.png)
 
@@ -593,6 +611,7 @@ begin
 end;
 ```
 Przykładowy wynik (dla `select * from f_available_trips_to('Francja', to_date('2024-10-10', 'YYYY-MM-DD'), to_date('2026-10-10', 'YYYY-MM-DD'));`):
+
 ![img_14.png](img_14.png)
 
 ---
@@ -733,10 +752,15 @@ begin
 end;
 ```
 Po wykonaniu `p_add_reservation(3, 3, 2)` rekord został dodany:
+
 ![img_15.png](img_15.png)
+
 Zostało 0 miejsc w wycieczce 3 zatem wykonaniu `p_add_reservation(3, 4, 1)` otrzymujemy błąd:
+
 ![img_16.png](img_16.png)
+
 Po wykonaniu dla wycieczki 1, która już się zakończyła otrzymujemy błąd:
+
 ![img_17.png](img_17.png)
 
 ## p_modify_reservation_status
@@ -782,8 +806,11 @@ begin
 end;
 ```
 Po wykonaniu `p_modify_reservation_status(5, 'P')` dane zaktualizowane (rezerwacja 5 miała status 'N'):
+
 ![img_18.png](img_18.png)
+
 Po wykonaniu `p_modify_reservation_status(8, 'N')` błąd bo nie ma miejsc, a rezerwacja miała status 'C':
+
 ![img_19.png](img_19.png)
 
 ## p_modify_reservation
@@ -829,8 +856,11 @@ begin
 end;
 ```
 Po wywołaniu `p_modify_reservation(9, 1)` (ma status 'P' i 3 bilety) dane zostają zmodyfikowane:
+
 ![img_20.png](img_20.png)
+
 Po wywołaniu `p_modify_reservation(9, 100)` jest błąd:
+
 ![img_21.png](img_21.png)
 
 
@@ -850,11 +880,15 @@ as begin
 end;
 ```
 Po wywołaniu `p_modify_max_no_places(4, 20)` dane zostają zmodyfikowane:
+
 ![img_22.png](img_22.png)
+
 Po wywołaniu `p_modify_max_no_places(3, 1)` jest błąd:
+
 ![img_23.png](img_23.png)
 
 Wszystkie udane transakcje zostały zapisane do tabeli `log`:
+
 ![img_24.png](img_24.png)
 
 ---
@@ -905,6 +939,7 @@ begin
 end;
 ```
 Wynik:
+
 ![img_27.png](img_27.png)
 
 
@@ -932,6 +967,7 @@ begin
 end;
 ```
 Po wykonaniu `p_add_reservation(4, 1, 3)` mamy wpis w logu stworzony przez trigger:
+
 ![img_25.png](img_25.png)
 
 ## p_modify_reservation_status_4
@@ -973,6 +1009,7 @@ begin
 end;
 ```
 Po wykonaniu `p_modify_reservation_status_4(23, 'C')` mamy wpis w logu:
+
 ![img_26.png](img_26.png)
 
 ## p_modify_reservation_4
@@ -1014,6 +1051,7 @@ begin
 end;
 ```
 Po wywołaniu `p_modify_reservation_4(4, 1)` mamy wpis w logu:
+
 ![img_28.png](img_28.png)
 
 ---
@@ -1088,7 +1126,8 @@ begin
     return reservation_id into reservation_id_;
 end;
 ```
-Po wywołaniu `p_add_reservation(3, 1, 100)` dostajemy błąd:
+Po wywołaniu `p_add_reservation_5(3, 1, 100)` dostajemy błąd:
+
 ![img_29.png](img_29.png)
 
 ## p_modify_reservation_status_5
@@ -1126,6 +1165,7 @@ begin
 end;
 ```
 Po wykonaniu `p_modify_reservation_status_5(8, 'P')` dostajemy błąd z triggera:
+
 ![img_31.png](img_31.png)
 
 ## p_modify_reservation_5
@@ -1162,7 +1202,8 @@ begin
     commit;
 end;
 ```
-Po wywołaniu `p_modify_reservation(1, 100)` dostajemy błąd:
+Po wywołaniu `p_modify_reservation_5(1, 100)` dostajemy błąd:
+
 ![img_30.png](img_30.png)
 
 ---
@@ -1200,6 +1241,15 @@ set no_available_places = (select v.no_available_places from vw_trip v where v.t
 where 1 = 1;
 ```
 
+Po dodadniu nowej kolumny w widoku `vw_trip` nie trzeba robić joina:
+```sql
+create or replace view vw_trip_6
+as
+select t.trip_id, t.country, t.trip_date, t.trip_name, t.max_no_places,
+       t.no_available_places
+from trip t;
+```
+
 ---
 # Zadanie 6a  - procedury
 
@@ -1214,15 +1264,17 @@ Obsługę pola `no_available_places` należy zrealizować przy pomocy procedur
 
 >UWAGA
 Należy stworzyć nowe wersje tych widoków/procedur/triggerów (np. dodając do nazwy dopisek 6a - od numeru zadania). Poprzednie wersje procedur należy pozostawić w celu  umożliwienia weryfikacji ich poprawności. 
-- może  być potrzebne wyłączenie 'poprzednich wersji' triggerów 
+- może być potrzebne wyłączenie 'poprzednich wersji' triggerów 
 
 
 # Zadanie 6a  - rozwiązanie
 
+Wyłączyłem aktywne wcześniej triggery, poniższe procedury są zmodyfikowanymi procedurami z zadania 3.
+
 ## p_add_reservation_6
 Dodałem update do tabeli trip
 ```sql
-create or replace procedure p_add_reservation_6
+create or replace procedure p_add_reservation_6a
     (trip_id_ int, person_id_ int, no_tickets_ int)
 as
     reservation_id_ int;
@@ -1254,7 +1306,7 @@ end;
 ## p_modify_reservation_status_6
 Dodawanie lub odejmowanie w trip zależne od statusu
 ```sql
-create or replace procedure p_modify_reservation_status_6
+create or replace procedure p_modify_reservation_status_6a
     (reservation_id_ int, status_ char)
 as
     cur_status char;
@@ -1308,7 +1360,7 @@ end;
 ## p_modify_reservation_6
 Update z różnicą biletów
 ```sql
-create or replace procedure p_modify_reservation_6
+create or replace procedure p_modify_reservation_6a
     (reservation_id_ int, no_tickets_ int)
 as
     trip_id_ int;
@@ -1352,6 +1404,18 @@ begin
 end;
 ```
 
+Testy zrobiłem na początkowych danych wejściowych
+
+Po wykonaniu `p_add_reservation_6a(4, 1, 4)` wycieczka na Hel ma 1 wolne miejsce co się zgadza
+
+![img_34.png](img_34.png)
+
+Po wykonaniu `p_modify_reservation_status_6a(3, 'P')` oraz `p_modify_reservation_6a(3, 2)` zmiany pojawiają się w tabeli `reservations`, a `no_available_places` w tabeli `trip` zostaje zaktualizowane
+
+![img_32.png](img_32.png)
+
+![img_33.png](img_33.png)
+
 
 ---
 # Zadanie 6b -  triggery
@@ -1370,9 +1434,9 @@ Należy stworzyć nowe wersje tych widoków/procedur/triggerów (np. dodając do
 
 
 # Zadanie 6b  - rozwiązanie
-Trigger ustala zmianę w ilości rezerwacji za pomocą zmiennej taken_places_change po czym wykonuje update
+Trigger ustala zmianę w ilości rezerwacji za pomocą zmiennej taken_places_change po czym wykonuje update. Z tym podejściem kompatybilne są procedury z zadania 3. 
 ```sql
-create or replace trigger tr_update_no_available_places
+create or replace trigger tr_update_no_available_places_6b
     before insert or update
     on reservation
     for each row
@@ -1391,15 +1455,22 @@ begin
 
     update trip
     set no_available_places = no_available_places - taken_places_change
-    where trip_id = trip_id_;
+    where trip_id = :NEW.trip_id;
 
 end;
 ```
 
+Po wykonaniu `p_add_reservation(4, 1, 1)` wycieczka na Hel ma 0 wolnych miejsc zgodnie z oczekiwaniami
+
+![img_35.png](img_35.png)
+
+Po wykonaniu `p_modify_reservation_status(3, 'C')` (wcześniej były 2 bilety i 'P') oraz `p_modify_reservation(5, 3)` (wcześniej były 2 bilety) mamy jedno miejsce więcej na wycieczce do Krakowa niż wcześniej, czyli się zgadza
+
+![img_36.png](img_36.png)
 
 # Zadanie 7 - podsumowanie
 
 Porównaj sposób programowania w systemie Oracle PL/SQL ze znanym ci systemem/językiem MS Sqlserver T-SQL
 
 ## Porównanie
-Jęzki są bardzo podobne, znajomość T-SQLa bardzo dobrze przekłada się na PL/SQL, jest trochę różnic w nazewnictwie i składni, ale ogólna idea i sposoby rozwiązywania problemów są takie same.
+Jęzki są bardzo podobne, znajomość T-SQLa bardzo dobrze przekłada się na PL/SQL. Jest trochę różnic w nazewnictwie, składni, transakcjach i triggerach, ale ogólna idea i sposoby rozwiązywania problemów są takie same.
