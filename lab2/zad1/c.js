@@ -79,7 +79,7 @@ db.OrderInfo.aggregate([
 {
     $project: {
         _id: 1,
-        CompanyName: "$CompanyName",
+        CompanyName: 1,
         ConfectionsSale97: 1
     }
 },
@@ -182,7 +182,7 @@ db.orders.aggregate([
 {
     $project: {
         _id: 1,
-        CompanyName: "$CompanyName",
+        CompanyName: 1,
         ConfectionsSale97: 1
     }
 },
