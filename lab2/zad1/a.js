@@ -1,164 +1,6 @@
-use north0;
-
-db.orderdetails_tmp.find()
-
-db.orders.aggregate(
-//customers
-{
-    $lookup : {
-        from: "customers",
-        localField: "CustomerID",
-        foreignField: "CustomerID",
-        as: "Customer"
-    }
-
-},
-{
-    $unwind : "$Customer"
-},
-{
-    $project : {
-        "Customer._id": 0,
-        "Customer.ContactName": 0,
-        "Customer.ContactTitle": 0,
-        "Customer.Address": 0,
-        "Customer.PostalCode": 0,
-        "Customer.Region": 0,
-        "Customer.Phone": 0,
-        "Customer.Fax": 0
-    }
-},
-
-//employees
-{
-    $lookup : {
-        from: "employees",
-            localField: "EmployeeID",
-            foreignField: "EmployeeID",
-            as: "Employee"
-    }
-},
-{
-    $unwind : "$Employee"
-},
-{
-    $project : {
-        "Employee._id": 0,
-        "Employee.TitleOfCourtesy": 0,
-        "Employee.BirthDate": 0,
-        "Employee.HireDate": 0,
-        "Employee.Address": 0,
-        "Employee.PostalCode": 0,
-        "Employee.City": 0,
-        "Employee.Region": 0,
-        "Employee.Country": 0,
-        "Employee.HomePhone": 0,
-        "Employee.Extension": 0,
-        "Employee.Photo": 0,
-        "Employee.Notes": 0,
-        "Employee.ReportsTo": 0,
-        "Employee.PhotoPath": 0
-    }
-},
-//shippers
-{
-    $lookup : {
-        from: "shippers",
-        localField: "ShipVia",
-        foreignField: "ShipperID",
-        as: "Shipper"
-    }
-},
-{
-    $unwind : "$Shipper"
-},
-{
-    $project : {
-        "Shipper._id": 0,
-        "Shipper.Phone": 0
-
-    }
-},
-//orderdetails
-{
-    $lookup : {
-        from: "orderdetails_tmp",
-        localField: "OrderID",
-        foreignField: "OrderID",
-        as: "Orderdetails"
-    }
-},
-{
-    $project : {
-        "Orderdetails._id": 0,
-        "Orderdetails.OrderID": 0,
-        "Orderdetails.ProductID": 0,
-    }
-},
-{
-    $addFields: {
-        Orderdetails: {
-            $map: {
-                input: "$Orderdetails",
-                as: "od",
-                in: {
-                    UnitPrice: "$$od.UnitPrice",
-                    Quantity: "$$od.Quantity",
-                    Discount: "$$od.Discount",
-                    Value: {
-                        $multiply: [
-                            "$$od.UnitPrice",
-                            "$$od.Quantity",
-                            { $subtract: [1, "$$od.Discount"] }
-                        ]
-                    },
-                    product: "$$od.product"
-                }
-            }
-        }
-    }
-},
-{
-    $project : {
-        "CustomerID": 0,
-        "EmployeeID": 0,
-        "ShipVia": 0,
-        "OrderDate": 0
-    }
-},
-{
-    $addFields: {
-        Shipment: {
-            Shipper: {
-                ShipperID: "$Shipper.ShipperID",
-                CompanyName: "$Shipper.CompanyName"
-            },
-            ShipName: "$ShipName",
-            ShipAddress: "$ShipAddress",
-            ShipCity: "$ShipCity",
-            ShipCountry: "$ShipCountry"
-        },
-        Dates: {
-            OrderDate: "$OrderDate",
-            RequiredDate: "$RequiredDate"
-        }
-    },
-},
-{
-    $addFields: {
-        OrderTotal: { $sum: "$Orderdetails.Value" }
-    }
-},
-{
-$out : "orders_tmp"
-}
-
-)
-
-
 db.orderdetails.aggregate(
 {
-    $lookup : {
+    $lookup: {
         from: "products",
         localField: "ProductID",
         foreignField: "ProductID",
@@ -167,7 +9,7 @@ db.orderdetails.aggregate(
 
 },
 {
-    $unwind : "$product"
+    $unwind: "$product"
 },
 {
     $project: {
@@ -203,26 +45,196 @@ db.orderdetails.aggregate(
     }
 },
 {
-$out : "orderdetails_tmp"
-})
+    $sort: {
+        "product.ProductID": 1
+    }
+},
+{
+    $out: "orderdetails_tmp"
+}
+)
 
-db.orderdetails_tmp.drop()
-
-db.customers.aggregate(
+db.orders.aggregate(
+// Customer
 {
     $lookup: {
-        from: "orders_tmp",
+        from: "customers",
         localField: "CustomerID",
-        foreignField: "Customer.CustomerID",
-        as: "Orders"
+        foreignField: "CustomerID",
+        as: "Customer"
+    }
+
+},
+{
+    $unwind: "$Customer"
+},
+{
+    $project: {
+        "Customer._id": 0,
+        "Customer.ContactName": 0,
+        "Customer.ContactTitle": 0,
+        "Customer.Address": 0,
+        "Customer.PostalCode": 0,
+        "Customer.Region": 0,
+        "Customer.Phone": 0,
+        "Customer.Fax": 0
+    }
+},
+
+
+// Employee
+{
+    $lookup: {
+        from: "employees",
+            localField: "EmployeeID",
+            foreignField: "EmployeeID",
+            as: "Employee"
+    }
+},
+{
+    $unwind: "$Employee"
+},
+{
+    $project: {
+        "Employee._id": 0,
+        "Employee.TitleOfCourtesy": 0,
+        "Employee.BirthDate": 0,
+        "Employee.HireDate": 0,
+        "Employee.Address": 0,
+        "Employee.PostalCode": 0,
+        "Employee.City": 0,
+        "Employee.Region": 0,
+        "Employee.Country": 0,
+        "Employee.HomePhone": 0,
+        "Employee.Extension": 0,
+        "Employee.Photo": 0,
+        "Employee.Notes": 0,
+        "Employee.ReportsTo": 0,
+        "Employee.PhotoPath": 0
+    }
+},
+
+
+// Dates
+{
+    $addFields: {
+        Dates: {
+            OrderDate: "$OrderDate",
+            RequiredDate: "$RequiredDate"
+        }
+    },
+},
+
+// Orderdetails
+{
+    $lookup: {
+        from: "orderdetails_tmp",
+        localField: "OrderID",
+        foreignField: "OrderID",
+        as: "Orderdetails"
     }
 },
 {
     $project: {
-        "Orders.Customer": 0
+        "Orderdetails._id": 0,
+        "Orderdetails.OrderID": 0,
+        "Orderdetails.ProductID": 0,
     }
 },
 {
-$out : "CustomerInfo"
+    $addFields: {
+        Orderdetails: {
+            $map: {
+                input: "$Orderdetails",
+                as: "od",
+                in: {
+                    UnitPrice: "$$od.UnitPrice",
+                    Quantity: "$$od.Quantity",
+                    Discount: "$$od.Discount",
+                    Value: {
+                        $multiply: [
+                            "$$od.UnitPrice",
+                            "$$od.Quantity",
+                            { $subtract: [1, "$$od.Discount"] }
+                        ]
+                    },
+                    product: "$$od.product"
+                }
+            }
+        }
+    }
+},
+
+
+// OrderTotal
+{
+    $addFields: {
+        OrderTotal: { $sum: "$Orderdetails.Value" }
+    }
+},
+
+
+// Shipment
+{
+    $lookup: {
+        from: "shippers",
+        localField: "ShipVia",
+        foreignField: "ShipperID",
+        as: "Shipper"
+    }
+},
+{
+    $unwind: "$Shipper"
+},
+{
+    $addFields: {
+        Shipment: {
+            Shipper: {
+                ShipperID: "$Shipper.ShipperID",
+                CompanyName: "$Shipper.CompanyName"
+            },
+            ShipName: "$ShipName",
+            ShipAddress: "$ShipAddress",
+            ShipCity: "$ShipCity",
+            ShipCountry: "$ShipCountry"
+        },
+        Dates: {
+            OrderDate: "$OrderDate",
+            RequiredDate: "$RequiredDate"
+        }
+    },
+},
+{
+    $project: {
+        Shipper: 0
+    }
+},
+
+
+{
+    $project: {
+        CustomerID: 0,
+        EmployeeID: 0,
+        ShipVia: 0,
+        OrderDate: 0,
+        RequiredDate: 0,
+        ShipAddress: 0,
+        ShipCity: 0,
+        ShipCountry: 0,
+        ShipName: 0,
+        ShipPostalCode: 0,
+        ShipRegion: 0,
+        ShippedDate: 0
+    }
+},
+{
+    $sort: {
+        OrderID: 1
+    }
+},
+{
+    $out: "OrderInfo"
 }
 )
+
+db.orderdetails_tmp.drop()
