@@ -1,0 +1,24 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "entity_framework_wyklad", "entity_framework_wyklad.csproj", "{56435844-5622-945E-2CD5-EB7852C46654}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{56435844-5622-945E-2CD5-EB7852C46654}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{56435844-5622-945E-2CD5-EB7852C46654}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{56435844-5622-945E-2CD5-EB7852C46654}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{56435844-5622-945E-2CD5-EB7852C46654}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {A3346093-99A9-4CEC-9AA0-E6B1EA4F9436}
+	EndGlobalSection
+EndGlobal
