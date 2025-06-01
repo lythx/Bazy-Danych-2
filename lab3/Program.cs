@@ -1,110 +1,52 @@
-﻿/* Console.WriteLine("Podaj nazwe produktu: ");
-var prodName = Console.ReadLine();
-
-var product = new Product { ProductName = prodName };
-var prodContext = new ProdContext();
-prodContext.Products.Add(product);
-prodContext.SaveChanges();
-
-var query = from prod in prodContext.Products
-            select prod.ProductName;
-
-Console.WriteLine("Lista produktów");
-
-foreach (var p in query)
-{
-    Console.WriteLine(p);
-} */
+﻿
+using System.Text.Json;
 
 var prodContext = new ProdContext();
-// Dodanie nowych faktur przeznaczonych do odpowiednich transakcji
-var invoiceFlowers1 = new Invoice
+
+var supplier1 = new Supplier
 {
-    InvoiceNumber = 1,
-    Quantity = 1
+    CompanyName = "DHL",
+    Street = "Wielicka",
+    City = "Kraków"
 };
-var invoiceFlowers2 = new Invoice
+var supplier2 = new Supplier
 {
-    InvoiceNumber = 2,
-    Quantity = 3
+    CompanyName = "MAERSK",
+    Street = "Długa",
+    City = "Warszawa"
 };
-var invoiceClothes = new Invoice
+prodContext.Suppliers.AddRange(supplier1, supplier2);
+
+var customer1 = new Customer
 {
-    InvoiceNumber = 3,
-    Quantity = 5
+    CompanyName = "Wedel",
+    Street = "Myślenicka",
+    City = "Kraków"
 };
-prodContext.I
-// Dodanie nowych produktów przeznaczonych do odpowiednich transakcji
-List<Product> productsFlowers1 = [
-    new Product
-    {
-        ProductName = "Tulipan",
-        UnitsInStock = 20,
-        CanBeSoldIn = [invoiceFlowers1, invoiceFlowers2]
-    },
-    new Product
-    {
-        ProductName = "Fiołek",
-        UnitsInStock = 5,
-        CanBeSoldIn = [invoiceFlowers1, invoiceFlowers2]
-    },
-    new Product
-    {
-        ProductName = "Storczyk",
-        UnitsInStock = 3,
-        CanBeSoldIn = [invoiceFlowers1, invoiceFlowers2]
-    }];
-List<Product> productsFlowers2 = [
-    new Product
-    {
-        ProductName = "Róża",
-        UnitsInStock = 2,
-        CanBeSoldIn = [invoiceFlowers1, invoiceFlowers2]
-    },
-    new Product
-    {
-        ProductName = "Paproć",
-        UnitsInStock = 1,
-        CanBeSoldIn = [invoiceFlowers1, invoiceFlowers2]
-    }];
-List<Product> productsClothes = [
-    new Product
-    {
-        ProductName = "Spodnie",
-        UnitsInStock = 2,
-        CanBeSoldIn = [invoiceClothes]
-    },
-    new Product
-    {
-        ProductName = "Koszula",
-        UnitsInStock = 1,
-        CanBeSoldIn = [invoiceClothes]
-    }];
-foreach (var p in productsFlowers1)
+var customer2 = new Customer
 {
-    prodContext.Products.Add(p);
-}
-foreach (var p in productsFlowers2)
-{
-    prodContext.Products.Add(p);
-}
-foreach (var p in productsClothes)
-{
-    prodContext.Products.Add(p);
-}
+    CompanyName = "Wedel",
+    Street = "Prosta",
+    City = "Wrocław"
+};
+prodContext.Customers.AddRange(customer1, customer2);
 
-
-
-// Znalezienie wcześniej dodanego dostawcy
-var query = from supp in prodContext.Suppliers
-            where supp.CompanyName == "Inpost"
-            select supp;
-var supplier = query.First();
-
-// Dodanie produktów jako dostarczanych przez tego dostawcę
-foreach (var p in products)
-{
-    supplier.Supplies.Add(p);
-    p.IsSuppliedBy = supplier;
-}
 prodContext.SaveChanges();
+
+
+// Pobranie firmy o danej nazwie
+var query1 = from comp in prodContext.Suppliers
+             where comp.CompanyName == "Wedel"
+             select comp;
+var query2 = from comp in prodContext.Companies
+             where comp.CompanyName == "Wedel"
+             select comp;
+var company = query1.First();
+Console.WriteLine(JsonSerializer.Serialize(company));
+
+// Pobranie dostawcy o danym numberze konta w banku
+var query3 = from supp in prodContext.Suppliers
+             where supp.BankAccountNumber == "PL91 1378 1462 6908 8595 1014 0748"
+             select supp;
+var supplier = query2.First();
+Console.WriteLine(JsonSerializer.Serialize(supplier));
